@@ -5789,6 +5789,8 @@ def handle_get(handler, parsed) -> bool:
             s = get_session(sid, metadata_only=True)
         except KeyError:
             return bad(handler, "Session not found", status=404)
+        if not _session_visible_to_active_profile(getattr(s, "profile", None), handler):
+            return bad(handler, "Session not found", status=404)
         try:
             from api.worktrees import worktree_status_for_session
 
@@ -6199,7 +6201,10 @@ def handle_get(handler, parsed) -> bool:
             return bad(handler, "Missing session_id")
         try:
             from api.session_ops import session_status
-            _clear_stale_stream_state(get_session(sid, metadata_only=True))
+            _status_meta = get_session(sid, metadata_only=True)
+            if not _session_visible_to_active_profile(getattr(_status_meta, "profile", None), handler):
+                return bad(handler, "Session not found", 404)
+            _clear_stale_stream_state(_status_meta)
             return j(handler, session_status(sid))
         except KeyError:
             return bad(handler, "Session not found", 404)
@@ -6216,6 +6221,9 @@ def handle_get(handler, parsed) -> bool:
             return bad(handler, "Missing session_id")
         try:
             from api.session_ops import session_usage
+            _usage_meta = get_session(sid, metadata_only=True)
+            if not _session_visible_to_active_profile(getattr(_usage_meta, "profile", None), handler):
+                return bad(handler, "Session not found", 404)
             return j(handler, session_usage(sid))
         except KeyError:
             return bad(handler, "Session not found", 404)
@@ -7478,6 +7486,8 @@ def handle_post(handler, parsed) -> bool:
             s = _ensure_full_session_before_mutation(body["session_id"], s)
         except KeyError:
             return bad(handler, "Session not found", 404)
+        if not _session_visible_to_active_profile(getattr(s, "profile", None), handler):
+            return bad(handler, "Session not found", 404)
         with _get_session_agent_lock(body["session_id"]):
             from api.session_ops import apply_session_title_rename
             apply_session_title_rename(s, body["title"])
@@ -7535,6 +7545,8 @@ def handle_post(handler, parsed) -> bool:
             s = _ensure_full_session_before_mutation(sid, s)
         except KeyError:
             return bad(handler, "Session not found", 404)
+        if not _session_visible_to_active_profile(getattr(s, "profile", None), handler):
+            return bad(handler, "Session not found", 404)
         # Resolve personality from config.yaml agent.personalities section
         # (matches hermes-agent CLI behavior)
         prompt = ""
@@ -7588,6 +7600,8 @@ def handle_post(handler, parsed) -> bool:
         try:
             s = get_session(sid)
         except KeyError:
+            return bad(handler, "Session not found", 404)
+        if not _session_visible_to_active_profile(getattr(s, "profile", None), handler):
             return bad(handler, "Session not found", 404)
         with _get_session_agent_lock(sid):
             s.enabled_toolsets = toolsets
@@ -7725,6 +7739,8 @@ def handle_post(handler, parsed) -> bool:
         try:
             s = get_session(sid, metadata_only=True)
         except KeyError:
+            return bad(handler, "Session not found", status=404)
+        if not _session_visible_to_active_profile(getattr(s, "profile", None), handler):
             return bad(handler, "Session not found", status=404)
         force = bool(body.get("force", False))
         try:
@@ -8534,6 +8550,8 @@ def handle_post(handler, parsed) -> bool:
             s = _ensure_full_session_before_mutation(body["session_id"], s)
         except KeyError:
             return bad(handler, "Session not found", 404)
+        if not _session_visible_to_active_profile(getattr(s, "profile", None), handler):
+            return bad(handler, "Session not found", 404)
         pin_requested = bool(body.get("pinned", True))
         # TOCTOU guard (Opus stage-389): the count check and the pin write
         # must happen under the same lock, otherwise two parallel pin
@@ -8679,6 +8697,8 @@ def handle_post(handler, parsed) -> bool:
         try:
             s = get_session(body["session_id"])
         except KeyError:
+            return bad(handler, "Session not found", 404)
+        if not _session_visible_to_active_profile(getattr(s, "profile", None), handler):
             return bad(handler, "Session not found", 404)
         # #1614: refuse moves into a project owned by another profile.
         target_pid = body.get("project_id") or None
@@ -9751,13 +9771,15 @@ def _handle_sse_stream(handler, parsed):
     return True
 
 
-def _terminal_session_lookup(body_or_query):
+def _terminal_session_lookup(body_or_query, handler=None):
     sid = str(body_or_query.get("session_id", "")).strip()
     if not sid:
         raise ValueError("session_id required")
     try:
         s = get_session(sid)
     except KeyError:
+        raise KeyError("Session not found")
+    if not _session_visible_to_active_profile(getattr(s, "profile", None), handler):
         raise KeyError("Session not found")
     return sid, s
 
@@ -9775,7 +9797,7 @@ def _terminal_remote_backend_enabled() -> bool:
 
 def _handle_terminal_start(handler, body):
     try:
-        sid, session = _terminal_session_lookup(body)
+        sid, session = _terminal_session_lookup(body, handler)
         if _terminal_remote_backend_enabled():
             return j(
                 handler,
@@ -10395,7 +10417,7 @@ def _message_content_text(content) -> str:
     return str(content or "")
 
 
-def _session_media_token_allows_image_path(sid: str, target: Path, image_mimes: set[str]) -> bool:
+def _session_media_token_allows_image_path(sid: str, target: Path, image_mimes: set[str], handler=None) -> bool:
     """Allow exact MEDIA:image paths already present in the requested session."""
     sid = str(sid or "").strip()
     if not sid:
@@ -10410,6 +10432,11 @@ def _session_media_token_allows_image_path(sid: str, target: Path, image_mimes: 
     try:
         session = get_session(sid)
     except Exception:
+        return False
+
+    # Active-profile boundary: don't authorize a media path from another
+    # profile's session transcript.
+    if not _session_visible_to_active_profile(getattr(session, "profile", None), handler):
         return False
 
     for message in getattr(session, "messages", []) or []:
@@ -10528,6 +10555,7 @@ def _handle_media(handler, parsed):
         qs.get("session_id", [""])[0],
         target,
         _INLINE_IMAGE_TYPES,
+        handler,
     )
 
     # ── #3234: hard-deny Hermes's own state + secret/config files ────────────
@@ -11994,6 +12022,8 @@ def _handle_background(handler, body):
         s = get_session(body["session_id"])
     except KeyError:
         return bad(handler, "Session not found", 404)
+    if not _session_visible_to_active_profile(getattr(s, "profile", None), handler):
+        return bad(handler, "Session not found", 404)
     prompt = str(body["prompt"]).strip()
     if not prompt:
         return bad(handler, "prompt is required")
@@ -12736,6 +12766,12 @@ def _handle_goal_command(handler, body):
         )
         if not has_persisted_turns:
             s.profile = requested_profile
+
+    # Active-profile boundary (after the empty-placeholder retag): a caller scoped
+    # to one profile must not read/control goal state or start a turn for another
+    # profile's session.
+    if not _session_visible_to_active_profile(getattr(s, "profile", None), handler):
+        return bad(handler, "Session not found", 404)
 
     current_stream_id = getattr(s, "active_stream_id", None)
     stream_running = False
@@ -14977,6 +15013,12 @@ def _handle_conversation_rounds(handler, body):
     sid = str(body.get("session_id") or "").strip()
     if not sid:
         return bad(handler, "session_id is required")
+
+    # Active-profile boundary: resolve the CLI session's profile and reject before
+    # counting rounds over a foreign-profile transcript.
+    _rounds_meta = _lookup_cli_session_metadata(sid)
+    if not _session_visible_to_active_profile((_rounds_meta or {}).get("profile") or None, handler):
+        return bad(handler, "Session not found", 404)
 
     since = body.get("since")
     if since is not None:

@@ -174,9 +174,10 @@
   @media (max-width: 860px) { .opt-grid { grid-template-columns: 1fr; } }
   .opt { display: flex; flex-direction: column; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 14px; padding: 20px; transition: border-color 0.18s ease, transform 0.18s ease; }
   .opt:hover { border-color: var(--accent-dim); transform: translateY(-3px); }
-  .opt h4 { font-size: 1.02rem; margin-bottom: 8px; display: flex; align-items: center; gap: 9px; }
+  .opt h4 { font-size: 1.02rem; margin-bottom: 8px; display: flex; align-items: center; flex-wrap: wrap; gap: 9px; }
   .opt h4 svg { width: 18px; height: 18px; fill: var(--accent); flex-shrink: 0; }
-  .opt .opt-tag { font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 8px; border-radius: 999px; margin-left: auto; }
+  .opt h4 .opt-name { white-space: nowrap; }
+  .opt .opt-tag { font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; padding: 2px 8px; border-radius: 999px; margin-left: auto; }
   .opt .opt-tag.public { background: rgba(88,166,255,0.15); color: var(--blue); border: 1px solid rgba(88,166,255,0.3); }
   .opt .opt-tag.private { background: rgba(63,185,80,0.15); color: var(--green); border: 1px solid rgba(63,185,80,0.3); }
   .opt .opt-tag.vps { background: rgba(188,140,255,0.15); color: var(--purple); border: 1px solid rgba(188,140,255,0.3); }
@@ -410,7 +411,7 @@ hermes model          <span class="c-cmt"># choose your LLM provider</span></cod
     </div>
     <div class="opt-grid stagger reveal">
       <div class="opt">
-        <h4><svg viewBox="0 0 640 512" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M256 64l128 0 0 64-128 0 0-64zM240 0c-26.5 0-48 21.5-48 48l0 96c0 26.5 21.5 48 48 48l48 0 0 32L32 224c-17.7 0-32 14.3-32 32s14.3 32 32 32l96 0 0 32-48 0c-26.5 0-48 21.5-48 48l0 96c0 26.5 21.5 48 48 48l160 0c26.5 0 48-21.5 48-48l0-96c0-26.5-21.5-48-48-48l-48 0 0-32 256 0 0 32-48 0c-26.5 0-48 21.5-48 48l0 96c0 26.5 21.5 48 48 48l160 0c26.5 0 48-21.5 48-48l0-96c0-26.5-21.5-48-48-48l-48 0 0-32 96 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-256 0 0-32 48 0c26.5 0 48-21.5 48-48l0-96c0-26.5-21.5-48-48-48L240 0zM96 448l0-64 128 0 0 64L96 448zm320-64l128 0 0 64-128 0 0-64z"/></svg> Tailscale <span class="opt-tag private">Easiest</span></h4>
+        <h4><svg viewBox="0 0 640 512" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M256 64l128 0 0 64-128 0 0-64zM240 0c-26.5 0-48 21.5-48 48l0 96c0 26.5 21.5 48 48 48l48 0 0 32L32 224c-17.7 0-32 14.3-32 32s14.3 32 32 32l96 0 0 32-48 0c-26.5 0-48 21.5-48 48l0 96c0 26.5 21.5 48 48 48l160 0c26.5 0 48-21.5 48-48l0-96c0-26.5-21.5-48-48-48l-48 0 0-32 256 0 0 32-48 0c-26.5 0-48 21.5-48 48l0 96c0 26.5 21.5 48 48 48l160 0c26.5 0 48-21.5 48-48l0-96c0-26.5-21.5-48-48-48l-48 0 0-32 96 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-256 0 0-32 48 0c26.5 0 48-21.5 48-48l0-96c0-26.5-21.5-48-48-48L240 0zM96 448l0-64 128 0 0 64L96 448zm320-64l128 0 0 64-128 0 0-64z"/></svg> <span class="opt-name">Tailscale</span> <span class="opt-tag private">Easiest</span></h4>
         <p><a href="https://tailscale.com/download" target="_blank">Tailscale</a> puts your devices on one private network — nothing is exposed to the internet. Install on both, sign into the same tailnet, then bind the server to all interfaces:</p>
         <div class="code">
           <div class="code-head"><span class="code-label">on the server</span><button class="code-copy">Copy</button></div>
@@ -420,7 +421,7 @@ tailscale ip -4   <span class="c-cmt"># your 100.x address</span></code></pre>
         </div>
       </div>
       <div class="opt">
-        <h4><svg viewBox="0 0 640 512" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M256 64l128 0 0 64-128 0 0-64zM240 0c-26.5 0-48 21.5-48 48l0 96c0 26.5 21.5 48 48 48l48 0 0 32L32 224c-17.7 0-32 14.3-32 32s14.3 32 32 32l96 0 0 32-48 0c-26.5 0-48 21.5-48 48l0 96c0 26.5 21.5 48 48 48l160 0c26.5 0 48-21.5 48-48l0-96c0-26.5-21.5-48-48-48l-48 0 0-32 256 0 0 32-48 0c-26.5 0-48 21.5-48 48l0 96c0 26.5 21.5 48 48 48l160 0c26.5 0 48-21.5 48-48l0-96c0-26.5-21.5-48-48-48l-48 0 0-32 96 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-256 0 0-32 48 0c26.5 0 48-21.5 48-48l0-96c0-26.5-21.5-48-48-48L240 0zM96 448l0-64 128 0 0 64L96 448zm320-64l128 0 0 64-128 0 0-64z"/></svg> SSH tunnel <span class="opt-tag vps">For a VPS</span></h4>
+        <h4><svg viewBox="0 0 640 512" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M256 64l128 0 0 64-128 0 0-64zM240 0c-26.5 0-48 21.5-48 48l0 96c0 26.5 21.5 48 48 48l48 0 0 32L32 224c-17.7 0-32 14.3-32 32s14.3 32 32 32l96 0 0 32-48 0c-26.5 0-48 21.5-48 48l0 96c0 26.5 21.5 48 48 48l160 0c26.5 0 48-21.5 48-48l0-96c0-26.5-21.5-48-48-48l-48 0 0-32 256 0 0 32-48 0c-26.5 0-48 21.5-48 48l0 96c0 26.5 21.5 48 48 48l160 0c26.5 0 48-21.5 48-48l0-96c0-26.5-21.5-48-48-48l-48 0 0-32 96 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-256 0 0-32 48 0c26.5 0 48-21.5 48-48l0-96c0-26.5-21.5-48-48-48L240 0zM96 448l0-64 128 0 0 64L96 448zm320-64l128 0 0 64-128 0 0-64z"/></svg> <span class="opt-name">SSH tunnel</span> <span class="opt-tag vps">For a VPS</span></h4>
         <p>Already SSH into a remote box or VPS? Forward the port over your existing SSH connection — no extra software, nothing public. Run this <b>on your local machine</b>:</p>
         <div class="code">
           <div class="code-head"><span class="code-label">on your laptop</span><button class="code-copy">Copy</button></div>
@@ -430,7 +431,7 @@ tailscale ip -4   <span class="c-cmt"># your 100.x address</span></code></pre>
         <p style="margin:0">Now <code>http://127.0.0.1:8787</code> on your laptop reaches the remote server.</p>
       </div>
       <div class="opt">
-        <h4><svg viewBox="0 0 640 512" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M256 64l128 0 0 64-128 0 0-64zM240 0c-26.5 0-48 21.5-48 48l0 96c0 26.5 21.5 48 48 48l48 0 0 32L32 224c-17.7 0-32 14.3-32 32s14.3 32 32 32l96 0 0 32-48 0c-26.5 0-48 21.5-48 48l0 96c0 26.5 21.5 48 48 48l160 0c26.5 0 48-21.5 48-48l0-96c0-26.5-21.5-48-48-48l-48 0 0-32 256 0 0 32-48 0c-26.5 0-48 21.5-48 48l0 96c0 26.5 21.5 48 48 48l160 0c26.5 0 48-21.5 48-48l0-96c0-26.5-21.5-48-48-48l-48 0 0-32 96 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-256 0 0-32 48 0c26.5 0 48-21.5 48-48l0-96c0-26.5-21.5-48-48-48L240 0zM96 448l0-64 128 0 0 64L96 448zm320-64l128 0 0 64-128 0 0-64z"/></svg> Cloudflare Tunnel <span class="opt-tag public">Public HTTPS</span></h4>
+        <h4><svg viewBox="0 0 640 512" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M256 64l128 0 0 64-128 0 0-64zM240 0c-26.5 0-48 21.5-48 48l0 96c0 26.5 21.5 48 48 48l48 0 0 32L32 224c-17.7 0-32 14.3-32 32s14.3 32 32 32l96 0 0 32-48 0c-26.5 0-48 21.5-48 48l0 96c0 26.5 21.5 48 48 48l160 0c26.5 0 48-21.5 48-48l0-96c0-26.5-21.5-48-48-48l-48 0 0-32 256 0 0 32-48 0c-26.5 0-48 21.5-48 48l0 96c0 26.5 21.5 48 48 48l160 0c26.5 0 48-21.5 48-48l0-96c0-26.5-21.5-48-48-48l-48 0 0-32 96 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-256 0 0-32 48 0c26.5 0 48-21.5 48-48l0-96c0-26.5-21.5-48-48-48L240 0zM96 448l0-64 128 0 0 64L96 448zm320-64l128 0 0 64-128 0 0-64z"/></svg> <span class="opt-name">Cloudflare Tunnel</span> <span class="opt-tag public">Public HTTPS</span></h4>
         <p><a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/" target="_blank">Cloudflare Tunnel</a> dials out from your machine — no port-forwarding, real HTTPS at a public hostname.</p>
         <div class="code">
           <div class="code-head"><span class="code-label">on the server</span><button class="code-copy">Copy</button></div>

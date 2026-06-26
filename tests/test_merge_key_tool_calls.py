@@ -176,6 +176,49 @@ class TestMergeToolCallsEndToEnd:
             if m.get("tool_calls")
         ] == ["call_1", "call_2"]
 
+    def test_multiple_equal_timestamp_state_tool_calls_stay_before_final(self):
+        """Several same-second state tool-call rows all stay before the final
+        answer, in order (Opus coverage gap: multi-tool tie shape)."""
+        sidecar_tool = _assistant_tc("call_1", "read_file", timestamp=1000)
+        final_answer = {"role": "assistant", "content": "Final answer.", "timestamp": 1000}
+        state_a = _assistant_tc("call_2", "terminal", timestamp=1000)
+        state_b = _assistant_tc("call_3", "write_file", timestamp=1000)
+
+        result = merge_session_messages_append_only(
+            [sidecar_tool, final_answer],
+            [state_a, state_b],
+        )
+
+        assert result[-1] == final_answer, result
+        assert [
+            m.get("tool_calls", [{}])[0].get("id")
+            for m in result
+            if m.get("tool_calls")
+        ] == ["call_1", "call_2", "call_3"]
+
+    def test_tie_insert_does_not_split_tool_call_result_block(self):
+        """The equal-timestamp tool-call insert must not land between an
+        assistant(tool_calls) and its tool result (Opus coverage gap:
+        guard-a block-split interaction)."""
+        sidecar_tool = _assistant_tc("call_1", "read_file", timestamp=1000)
+        sidecar_result = _tool_result("call_1", "read_file", "file contents")
+        final_answer = {"role": "assistant", "content": "Final answer.", "timestamp": 1000}
+        state_tool = _assistant_tc("call_2", "terminal", timestamp=1000)
+
+        result = merge_session_messages_append_only(
+            [sidecar_tool, sidecar_result, final_answer],
+            [state_tool],
+        )
+
+        # The tool result must stay immediately after its assistant(tool_calls).
+        idxs = {id(m): i for i, m in enumerate(result)}
+        asst_idx = next(i for i, m in enumerate(result)
+                        if m.get("tool_calls") and m["tool_calls"][0]["id"] == "call_1")
+        res_idx = next(i for i, m in enumerate(result)
+                       if m.get("role") == "tool" and m.get("tool_call_id") == "call_1")
+        assert res_idx == asst_idx + 1, f"tool_calls->result block split: {result}"
+        assert result[-1] == final_answer, result
+
     def test_pre_window_state_tool_call_row_is_not_tail_appended(self):
         """Pre-window tool-call resurrection candidates stay dropped."""
         sidecar_tool = _assistant_tc("call_1", "read_file", timestamp=1000)

@@ -221,3 +221,24 @@ def test_login_page_renders_absolute_oidc_href_when_enabled(monkeypatch):
 
     assert captured["content_type"] == "text/html; charset=utf-8"
     assert 'href="/api/auth/oidc/start?next=/workspace/demo"' in captured["body"]
+
+
+def test_oidc_enablement_requires_explicit_allowlist(monkeypatch):
+    import api.auth_oidc as auth_oidc
+
+    monkeypatch.delenv("HERMES_WEBUI_OIDC_ISSUER", raising=False)
+    monkeypatch.delenv("HERMES_WEBUI_OIDC_CLIENT_ID", raising=False)
+    monkeypatch.delenv("HERMES_WEBUI_OIDC_ALLOW_CLAIM", raising=False)
+    monkeypatch.delenv("HERMES_WEBUI_OIDC_ALLOW_VALUES", raising=False)
+    monkeypatch.setattr(
+        auth_oidc,
+        "get_config",
+        lambda: {
+            "webui_oidc": {
+                "issuer": "https://issuer.example",
+                "client_id": "webui-client",
+            }
+        },
+    )
+
+    assert auth_oidc.is_oidc_enabled() is False

@@ -47,7 +47,12 @@ class OIDCAuthError(Exception):
 
 def is_oidc_enabled() -> bool:
     cfg = _resolve_oidc_config()
-    return bool(cfg.get("issuer") and cfg.get("client_id"))
+    return bool(
+        cfg.get("issuer")
+        and cfg.get("client_id")
+        and cfg.get("allow_claim")
+        and cfg.get("allow_values")
+    )
 
 
 def build_authorization_redirect(
@@ -167,6 +172,10 @@ def _require_oidc_config() -> dict[str, Any]:
     cfg = _resolve_oidc_config()
     if not cfg.get("issuer") or not cfg.get("client_id"):
         raise OIDCConfigError("Native OIDC login is not configured")
+    if not cfg.get("allow_claim") or not cfg.get("allow_values"):
+        raise OIDCConfigError(
+            "Native OIDC login requires webui_oidc.allow_claim and allow_values"
+        )
     return cfg
 
 

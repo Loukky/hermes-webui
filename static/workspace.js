@@ -901,6 +901,7 @@ function forceRenderMarkdownPreview(){
 let _previewCurrentPath = '';  // relative path of currently previewed file
 let _previewCurrentMode = '';  // 'code' | 'csv' | 'md' | 'image' | 'html' | 'pdf' | 'audio' | 'video'
 let _previewDirty = false;     // true when edits are unsaved
+let _previewReturnTarget = 'files'; // #2668 (opt-in): 'files' | 'changes' — where returnFromPreview() goes back to
 
 function showPreview(mode){
   // mode: 'code' | 'csv' | 'image' | 'md' | 'html' | 'pdf' | 'audio' | 'video' | 'gitdiff'

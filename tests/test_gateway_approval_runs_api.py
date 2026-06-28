@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import io
 import json
+import socket
 import threading
 import urllib.error
 from unittest.mock import MagicMock, patch
@@ -80,7 +81,7 @@ def test_gateway_capability_detection_marks_probe_failures_unreachable():
 
     def _fake_urlopen_fail(req, *, timeout=None):
         assert req.full_url == "http://fake:9999/v1/capabilities"
-        raise urllib.error.URLError("gateway unreachable")
+        raise urllib.error.URLError(ConnectionRefusedError("connection refused"))
 
     with patch("urllib.request.urlopen", side_effect=_fake_urlopen_fail):
         caps = get_gateway_caps("http://fake:9999", "secret")
@@ -88,6 +89,31 @@ def test_gateway_capability_detection_marks_probe_failures_unreachable():
         assert caps["probe_error"]
         assert gateway_approval_unavailable_reason("http://fake:9999", "secret") == "unreachable"
         assert gateway_supports_approval("http://fake:9999", "secret") is False
+
+    invalidate_gateway_caps()
+
+
+def test_gateway_capability_detection_treats_timeout_probe_as_reachable_unsupported():
+    """Slow probes should preserve the reachable-but-unsupported warning contract."""
+    from api.config import (
+        gateway_approval_unavailable_reason,
+        gateway_supports_approval,
+        get_gateway_caps,
+        invalidate_gateway_caps,
+    )
+
+    invalidate_gateway_caps()
+
+    def _fake_urlopen_timeout(req, *, timeout=None):
+        assert req.full_url == "http://fake:8888/v1/capabilities"
+        raise socket.timeout("timed out")
+
+    with patch("urllib.request.urlopen", side_effect=_fake_urlopen_timeout):
+        caps = get_gateway_caps("http://fake:8888", "secret")
+        assert caps["capabilities_reachable"] is True
+        assert caps["probe_error"]
+        assert gateway_approval_unavailable_reason("http://fake:8888", "secret") == "unsupported"
+        assert gateway_supports_approval("http://fake:8888", "secret") is False
 
     invalidate_gateway_caps()
 

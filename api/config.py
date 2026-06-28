@@ -17,6 +17,7 @@ import logging
 import os
 import queue
 import re
+import socket
 import sys
 import threading
 import time
@@ -7433,6 +7434,15 @@ _GATEWAY_CAPS_LOCK = threading.Lock()
 _GATEWAY_CAPS_TTL_S: float = 60.0
 
 
+def _gateway_caps_probe_timed_out(exc: BaseException) -> bool:
+    """Keep slow capability probes on the legacy reachable-but-unsupported path."""
+    reason = exc.reason if isinstance(exc, urllib.error.URLError) else exc
+    if isinstance(reason, (TimeoutError, socket.timeout)):
+        return True
+    reason_text = str(reason).lower()
+    return "timed out" in reason_text or "timeout" in reason_text
+
+
 def get_gateway_caps(base_url: str, api_key: str = "") -> dict:
     """Return cached gateway capability flags, probing /v1/capabilities if stale."""
     base_url = str(base_url or "").rstrip("/")
@@ -7456,16 +7466,24 @@ def get_gateway_caps(base_url: str, api_key: str = "") -> dict:
             headers["Authorization"] = f"Bearer {api_key}"
         req = urllib.request.Request(f"{base_url}/v1/capabilities", headers=headers, method="GET")
         with urllib.request.urlopen(req, timeout=3) as resp:
+            caps["capabilities_reachable"] = True
             body = json.loads(resp.read(65536))
-        caps["capabilities_reachable"] = True
         features = body.get("features") if isinstance(body, dict) else {}
         if not isinstance(features, dict):
             features = {}
         caps["approval_events"] = bool(features.get("approval_events"))
         caps["run_approval_response"] = bool(features.get("run_approval_response"))
     except urllib.error.HTTPError as exc:
-        if exc.code == 404:
+        caps["capabilities_reachable"] = True
+        caps["probe_error"] = f"{type(exc).__name__}: {exc}"
+    except urllib.error.URLError as exc:
+        if _gateway_caps_probe_timed_out(exc):
             caps["capabilities_reachable"] = True
+        caps["probe_error"] = f"{type(exc).__name__}: {exc}"
+    except (TimeoutError, socket.timeout) as exc:
+        caps["capabilities_reachable"] = True
+        caps["probe_error"] = f"{type(exc).__name__}: {exc}"
+    except OSError as exc:
         caps["probe_error"] = f"{type(exc).__name__}: {exc}"
     except Exception as exc:
         caps["probe_error"] = f"{type(exc).__name__}: {exc}"

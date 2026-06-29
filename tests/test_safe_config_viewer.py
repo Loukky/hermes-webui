@@ -424,3 +424,26 @@ def test_capability_url_path_segment_tokens_are_scrubbed(monkeypatch):
     # benign paths untouched
     assert safe["benign_path"] == "https://example.com/docs/getting-started/intro"
     assert safe["benign_api"] == "https://api.example.com/v1/users/42/profile"
+
+
+def test_url_userinfo_all_forms_scrubbed(monkeypatch):
+    """#5088 round 4 (Codex re-gate): the userinfo scrubber must cover empty-
+    username DSNs (redis://:PW@) and token-as-username URLs (https://TOKEN@),
+    not only user:pass@. Proven with _redact_text disabled (unconditional)."""
+    monkeypatch.setattr(routes, "_redact_text", lambda t: t)
+    safe = routes._redact_config_for_display({
+        "redis_url": "redis://:REDIS_PW_LEAK@localhost:6379/0",
+        "git_url": "https://ghp_TOKENLEAK5088@github.com/org/repo.git",
+        "mongo": "mongodb+srv://admin:M0NGOLEAK@cluster.example.net/db",
+        "normal": "https://user:PASSLEAK@host/x",
+        "benign": "https://api.example.com/v1/users/42",
+        "mailto": "mailto:someone@example.com",
+    })
+    blob = json.dumps(safe)
+    for leak in ("REDIS_PW_LEAK", "ghp_TOKENLEAK5088", "M0NGOLEAK", "PASSLEAK"):
+        assert leak not in blob, f"{leak} leaked"
+    assert safe["redis_url"] == "redis://:***@localhost:6379/0"
+    assert safe["normal"] == "https://user:***@host/x"
+    # benign (no userinfo) untouched
+    assert safe["benign"] == "https://api.example.com/v1/users/42"
+    assert safe["mailto"] == "mailto:someone@example.com"

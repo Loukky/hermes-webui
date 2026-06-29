@@ -468,10 +468,27 @@ def _scrub_config_scalar_secrets(text: str) -> str:
     """
     if not isinstance(text, str) or not text:
         return text
-    # 1) URL/DSN userinfo:  scheme://user:pass@host  ->  scheme://user:***@host
+
+    # 1) URL/DSN userinfo:  scheme://[user[:pass]]@host  ->  mask the credential.
+    #    Covers all forms (round 4, #5088): ``user:pass@`` -> ``user:***@``,
+    #    empty-username DSNs ``:pass@`` (e.g. ``redis://:PW@host``) -> ``:***@``,
+    #    and token-as-username ``token@`` (e.g. ``https://ghp_x@host``) -> ``***@``.
+    def _mask_userinfo(m: "re.Match") -> str:
+        scheme = m.group("scheme")
+        user = m.group("user") or ""
+        has_pw = m.group("pw") is not None
+        if has_pw:
+            # user:pass  -> keep a non-empty username, mask the password
+            return f"{scheme}{user}:***@"
+        # username/token only (no password delimiter) -> mask entirely
+        return f"{scheme}***@"
+
     text = re.sub(
-        r"([a-zA-Z][a-zA-Z0-9+.\-]*://[^/\s:@]+):[^/\s@]+@",
-        r"\1:***@",
+        r"(?P<scheme>[a-zA-Z][a-zA-Z0-9+.\-]*://)"
+        r"(?P<user>[^/\s:@]*)"
+        r"(?::(?P<pw>[^/\s@]*))?"
+        r"@",
+        _mask_userinfo,
         text,
     )
     # 2+3) Sensitive query/fragment params (delimiters ? & ; #):

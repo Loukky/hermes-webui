@@ -61,6 +61,14 @@ def _has_pre_list_view_sync() -> bool:
     return body.index(viewed_call) < body.index(list_call)
 
 
+def _completed_message_count_assignment() -> str:
+    body = _done_handler_body()
+    marker = "const completedMessageCount="
+    start = body.index(marker)
+    end = body.index(";\n", start) + 1
+    return body[start:end]
+
+
 def _run_done_compaction_harness(
     *,
     is_session_viewed: bool,
@@ -86,6 +94,10 @@ def _run_done_compaction_harness(
         ]
     )
     has_pre_list_sync = _has_pre_list_view_sync()
+    completed_message_count_assignment = textwrap.indent(
+        _completed_message_count_assignment(),
+        "        ",
+    ).rstrip()
     harness = textwrap.dedent(
         f"""
         const SESSION_VIEWED_COUNTS_KEY='session-viewed-counts';
@@ -131,25 +143,19 @@ def _run_done_compaction_harness(
         }};
         if ({str(include_completed_messages).lower()}) completedSession.messages = visibleMessages.slice();
         if ({str(include_message_count).lower()}) completedSession.message_count = 4;
-        const completedMessageCount = completedSession.message_count != null
-          ? completedSession.message_count
-          : (Array.isArray(completedSession.messages)
-              ? completedSession.messages.length
-              : ((S.session&&((S.session.session_id||activeSid)===completedSid)&&S.session.message_count != null)
-                  ? S.session.message_count
-                  : ((Array.isArray(S.messages)&&S.messages.length)||0)));
+{completed_message_count_assignment}
         if ({str(is_session_viewed).lower()} && {json.dumps(has_pre_list_sync)}) {{
           _markSessionViewed(completedSid, completedMessageCount);
         }}
         if (!{str(is_session_viewed).lower()}) {{
-          _markSessionCompletionUnread(completedSid, completedSession.message_count);
+          _markSessionCompletionUnread(completedSid, completedMessageCount);
         }}
         _markSessionCompletedInList(completedSession, activeSid);
         const cacheRow=_allSessions.find(s=>s&&s.session_id===completedSid);
         const unreadAfterCacheUpdate=_hasUnreadForSession(cacheRow);
         const viewedCountAfterCacheUpdate=_getSessionViewedCounts()[completedSid] ?? null;
         if ({str(is_session_viewed).lower()}) {{
-          _markSessionViewed(completedSid, completedSession.message_count ?? completedMessageCount);
+          _markSessionViewed(completedSid, completedMessageCount);
         }}
         console.log(JSON.stringify({{
           hasPreListSync:{json.dumps(has_pre_list_sync)},
@@ -157,6 +163,7 @@ def _run_done_compaction_harness(
           viewedCountAfterCacheUpdate,
           unreadAfterActiveBranchSync:_hasUnreadForSession(cacheRow),
           hasCompletionUnread:_hasSessionCompletionUnread(completedSid),
+          completionUnreadMessageCount:_getSessionCompletionUnread()[completedSid]?.message_count ?? null,
           viewedCount:_getSessionViewedCounts()[completedSid] ?? null,
           cacheRow,
         }}));
@@ -251,4 +258,5 @@ def test_background_done_completion_stays_unread_after_sidebar_cache_update():
     assert result["viewedCountAfterCacheUpdate"] == 3
     assert result["unreadAfterActiveBranchSync"] is True
     assert result["hasCompletionUnread"] is True
+    assert result["completionUnreadMessageCount"] == 4
     assert result["viewedCount"] == 3

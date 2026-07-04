@@ -84,12 +84,12 @@ let _streamFadeArrivalWps=0;
 let _streamFadeLatestAnimationEndAt=0;
 let _streamFadeVisibleWords=0;
 let _streamFadeHoldUntilMs=0;
-let _streamFadeCurrentMs=200;
+let _streamFadeCurrentMs=620;
 let _streamFadeDomText='';
-const _STREAM_FADE_MS=200;
-const _STREAM_FADE_MAX_MS=350;
-const _STREAM_FADE_DONE_MAX_MS=320;
-const _STREAM_FADE_DONE_DRAIN_MAX_MS=900;
+const _STREAM_FADE_MS=620;
+const _STREAM_FADE_MAX_MS=900;
+const _STREAM_FADE_DONE_MAX_MS=1000;
+const _STREAM_FADE_DONE_DRAIN_MAX_MS=1400;
 const performance={performance_stub};
 {helpers}
 """
@@ -209,9 +209,9 @@ def test_stream_fade_appends_new_spans_without_replacing_existing_nodes():
     script = (
         function_block(MESSAGES_JS, "_streamFadeAppendText")
         + r"""
-const _STREAM_FADE_MS=200;
+const _STREAM_FADE_MS=620;
 let _streamFadeLatestAnimationEndAt=0;
-let _streamFadeCurrentMs=200;
+let _streamFadeCurrentMs=620;
 const performance={_t:0,now(){return this._t;}};
 function _streamFadeReduceMotionEnabled(){ return false; }
 class FakeNode{
@@ -271,7 +271,7 @@ def test_transparent_anchor_prose_uses_fade_renderer_when_enabled():
 
 def test_stream_fade_done_drain_has_hard_cap_for_large_buffered_responses():
     drain_block = function_block(MESSAGES_JS, "_drainStreamFadeBeforeDone")
-    assert "const _STREAM_FADE_DONE_DRAIN_MAX_MS=900" in MESSAGES_JS
+    assert "const _STREAM_FADE_DONE_DRAIN_MAX_MS=1400" in MESSAGES_JS
     assert_contains_all(
         drain_block,
         [
@@ -325,7 +325,9 @@ def test_stream_fade_css_is_opacity_only_and_hides_live_cursor():
         [
             "@keyframes stream-fade-word-in",
             ".stream-fade-word.is-new",
-            "var(--stream-fade-ms,240ms) cubic-bezier(.2,.7,.2,1)",
+            "var(--stream-fade-ms,620ms) cubic-bezier(.16,.84,.32,1)",
+            "35%{opacity:.18;}",
+            "70%{opacity:.72;}",
             "prefers-reduced-motion: reduce",
             ".msg-body.stream-fade-active > :last-child::after",
             "display:none",
@@ -351,12 +353,12 @@ const words=Array.from({length:260},(_,i)=>'w'+i).join(' ');
 performance._t += 33;
 let out=_streamFadeNextText('slow start');
 if(!out.changed) throw new Error('expected initial reveal');
-if(_streamFadeCurrentMs !== 200) throw new Error(`expected base fade 200ms, got ${_streamFadeCurrentMs}`);
-for(let frame=0;frame<20&&_streamFadeCurrentMs<350;frame++){
+if(_streamFadeCurrentMs !== 620) throw new Error(`expected base fade 620ms, got ${_streamFadeCurrentMs}`);
+for(let frame=0;frame<20&&_streamFadeCurrentMs<900;frame++){
   performance._t += 120;
   out=_streamFadeNextText(words);
 }
-if(_streamFadeCurrentMs !== 350) throw new Error(`expected max fade 350ms, got ${_streamFadeCurrentMs}`);
+if(_streamFadeCurrentMs !== 900) throw new Error(`expected max fade 900ms, got ${_streamFadeCurrentMs}`);
 """
     )
     run_node(script)

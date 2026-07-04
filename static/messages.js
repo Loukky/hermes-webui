@@ -2545,7 +2545,7 @@ function attachLiveStream(activeSid, streamId, uploaded=[], options={}){
   let _streamFadeLatestAnimationEndAt=0;
   let _streamFadeVisibleWords=0;
   let _streamFadeHoldUntilMs=0;
-  let _streamFadeCurrentMs=200;
+  let _streamFadeCurrentMs=620;
   let _streamFadeDomText='';
   let _streamFadeReduceMotionMql=null;
   let _streamFadeReduceMotion=false;
@@ -2557,10 +2557,10 @@ function attachLiveStream(activeSid, streamId, uploaded=[], options={}){
     ? Number((INFLIGHT[activeSid]&&INFLIGHT[activeSid].lastRunJournalSeq)||0)
     : 0;
   let _lastRunJournalEventId='';
-  const _STREAM_FADE_MS=200;
-  const _STREAM_FADE_MAX_MS=350;
-  const _STREAM_FADE_DONE_MAX_MS=320;
-  const _STREAM_FADE_DONE_DRAIN_MAX_MS=900;
+  const _STREAM_FADE_MS=620;
+  const _STREAM_FADE_MAX_MS=900;
+  const _STREAM_FADE_DONE_MAX_MS=1000;
+  const _STREAM_FADE_DONE_DRAIN_MAX_MS=1400;
   const _anchorApi=(typeof window!=='undefined'&&window.HermesAssistantTurnAnchors)
     ? window.HermesAssistantTurnAnchors
     : null;

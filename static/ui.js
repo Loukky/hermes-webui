@@ -598,6 +598,7 @@ function _clearMessageVirtualHeightCache(){
   clearTimeout(_messageVirtualScrollSettleTimer);
   _messageVirtualScrollSettleTimer=0;
   _messageVirtualDeferredMeasurement=null;
+  if(typeof _clearUserRowIntrinsicHeightCache==='function') _clearUserRowIntrinsicHeightCache();
 }
 function _resetMessageRenderWindow(sid){
   _messageRenderWindowSid=sid||null;
@@ -1175,6 +1176,16 @@ function _messageViewportIntersectsRenderedRow(){
 // either. Refreshed every measure pass, so edits self-heal. Desktop rests at
 // content-visibility:visible (intrinsic-size ignored) → inert there, zero behavior change.
 const _userRowIntrinsicHeightBySessionIdx=Object.create(null);
+// Cleared on session switch alongside _messageVirtualHeightCache (both are
+// per-session measured-height caches keyed by session-relative index). Without this,
+// keys collide across sessions — _messageSessionIndexForRawIdx = _messageSessionIndexBase()
+// + rawIdx and the base is 0 for the common non-offset session — so a new session's
+// off-screen user rows would inherit the previous session's remembered heights and
+// inflate scrollHeight until each is re-measured. Delete keys in place to keep the
+// const binding stable for any closure that captured it.
+function _clearUserRowIntrinsicHeightCache(){
+  for(const k in _userRowIntrinsicHeightBySessionIdx) delete _userRowIntrinsicHeightBySessionIdx[k];
+}
 function _rememberUserRowIntrinsicHeight(sessionMsgIdx, height){
   const key=Number(sessionMsgIdx);
   if(!Number.isFinite(key)||!(height>0)) return;

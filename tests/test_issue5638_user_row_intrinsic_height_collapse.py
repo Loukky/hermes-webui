@@ -270,3 +270,53 @@ console.log(JSON.stringify({ inline: assistantRow.style.containIntrinsicSize }))
         "assistant rows must NOT get an inline intrinsic-size writeback; "
         f"got {m['inline']!r}"
     )
+
+
+def test_cache_cleared_on_session_switch_prevents_stale_height_bleed():
+    """Greptile #5672 review: the module-level height cache is keyed by
+    session-relative index (_messageSessionIndexBase()+rawIdx), and the base is 0
+    for the common non-offset session, so keys collide across sessions. Without a
+    clear on session switch, a new session's off-screen user row at the same key
+    inherits the previous session's remembered height and inflates scrollHeight.
+
+    _clearUserRowIntrinsicHeightCache() (wired into _clearMessageVirtualHeightCache,
+    which _resetMessageRenderWindow calls on session switch) must empty the cache so
+    a rebuilt row at a colliding key falls back to the content estimate, NOT the
+    stale remembered height.
+
+    Mutation: make _clearUserRowIntrinsicHeightCache a no-op and this fails (the
+    rebuilt row reserves the stale 5000px instead of the ~short estimate)."""
+    js = UI_JS_PATH.read_text(encoding="utf-8")
+    source = _extract_func_script(js) + _fake_row_prelude() + r"""
+eval(extractFunc('_rememberUserRowIntrinsicHeight'));
+eval(extractFunc('_estimateUserRowIntrinsicHeight'));
+eval(extractFunc('_applyUserRowIntrinsicHeight'));
+eval(extractFunc('_clearUserRowIntrinsicHeightCache'));
+// Session A: a tall user row at session-relative index 3 measured 5000px.
+_rememberUserRowIntrinsicHeight(3, 5000);
+const beforeClear = makeRow('user', 3, 0);
+_applyUserRowIntrinsicHeight(beforeClear, 'x');   // would reserve the remembered 5000
+// Session switch clears the cache.
+_clearUserRowIntrinsicHeightCache();
+// Session B: a SHORT user row at the SAME colliding key 3, never measured here.
+const afterClear = makeRow('user', 3, 0);
+_applyUserRowIntrinsicHeight(afterClear, 'hi');   // must fall back to the estimate
+const estimate = _estimateUserRowIntrinsicHeight('hi');
+console.log(JSON.stringify({
+  beforeClear: beforeClear.style.containIntrinsicSize,
+  afterClear: afterClear.style.containIntrinsicSize,
+  estimate: 'auto ' + estimate + 'px',
+}));
+"""
+    m = json.loads(_run_node(source))
+    assert m["beforeClear"] == "auto 5000px", (
+        "sanity: before the clear, the remembered 5000px must be reserved; "
+        f"got {m['beforeClear']!r}"
+    )
+    assert m["afterClear"] == m["estimate"], (
+        "after a session switch clear, a rebuilt row at the colliding key must fall "
+        f"back to the content estimate ({m['estimate']}), NOT the stale remembered "
+        f"5000px; got {m['afterClear']!r} (buggy: cache not cleared → stale bleed)"
+    )
+    assert m["afterClear"] != "auto 5000px", "stale height must not survive the clear"
+

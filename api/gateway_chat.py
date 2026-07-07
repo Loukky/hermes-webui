@@ -826,6 +826,12 @@ def _run_gateway_chat_streaming(
             s = get_session(session_id)
             if not _stream_writeback_is_current(s, stream_id):
                 return
+            # A late Stop can land after Gateway has yielded a full answer but
+            # before success writeback. Treat it as cancellation so any
+            # credential-exhausted process-wakeup pause stays in place.
+            if cancel_event.is_set():
+                put_gateway_event("cancel", {"message": "Cancelled by user"})
+                return
             now = time.time()
             # Preserve subsecond ordering for gateway-backed turns. Using an
             # integer seconds timestamp gives the user and assistant rows the
